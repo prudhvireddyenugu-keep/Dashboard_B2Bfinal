@@ -38,7 +38,7 @@ def load_data(file_path: str) -> pd.DataFrame:
     return df
 
 # Change this file name if needed
-DATA_FILE = "client_data.csv"
+DATA_FILE = "full_client_dataset_1000_rows"
 
 try:
     df = load_data(DATA_FILE)
