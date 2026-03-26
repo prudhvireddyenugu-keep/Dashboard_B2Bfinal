@@ -1,110 +1,121 @@
+# app.py
+
 import pandas as pd
 import streamlit as st
 import plotly.express as px
 
-# ----------------------------
-# Page config
-# ----------------------------
-st.set_page_config(
-    page_title="Client KPI Dashboard",
-    page_icon="📊",
-    layout="wide"
-)
+# -----------------------------
+# Page Config
+# -----------------------------
+st.set_page_config(page_title="Client KPI Dashboard", layout="wide")
 
-st.title("Client KPI Dashboard")
-st.caption("Interactive KPI and chart dashboard")
-
-# ----------------------------
-# Load data
-# ----------------------------
+# -----------------------------
+# Load Data
+# -----------------------------
 @st.cache_data
-def load_data(file_path):
-    df = pd.read_excel(file_path)
-
-    # Clean column names
-    df.columns = [col.strip() for col in df.columns]
-
-    # Convert numeric columns
-    numeric_cols = ["Engagement Score", "Meetings Count", "Revenue"]
-    for col in numeric_cols:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
+def load_data():
+    df = pd.read_csv("full_client_dataset_1000_rows.csv")
     return df
 
-# 🔥 UPDATED FILE NAME HERE
-DATA_FILE = "full_client_dataset_1000_rows.xlsx"
+df = load_data()
 
-try:
-    df = load_data(DATA_FILE)
-except FileNotFoundError:
-    st.error(f"File not found: {DATA_FILE}")
-    st.stop()
+# -----------------------------
+# Title
+# -----------------------------
+st.title("📊 Client KPI Dashboard")
 
-# ----------------------------
-# KPIs
-# ----------------------------
-total_clients = df["Client ID"].nunique()
-total_revenue = df["Revenue"].sum()
-avg_engagement = df["Engagement Score"].mean()
+# -----------------------------
+# Sidebar Filters
+# -----------------------------
+st.sidebar.header("Filters")
 
-retained = df[df["Retention Status"] == "Retained"].shape[0]
-retention_rate = (retained / len(df)) * 100
+industry_filter = st.sidebar.multiselect(
+    "Select Industry",
+    options=df["Industry"].unique(),
+    default=df["Industry"].unique()
+)
 
-# ----------------------------
-# KPI Display
-# ----------------------------
+region_filter = st.sidebar.multiselect(
+    "Select Region",
+    options=df["Region"].unique(),
+    default=df["Region"].unique()
+)
+
+filtered_df = df[
+    (df["Industry"].isin(industry_filter)) &
+    (df["Region"].isin(region_filter))
+]
+
+# -----------------------------
+# KPI Metrics
+# -----------------------------
+total_clients = filtered_df["Client ID"].nunique()
+total_revenue = filtered_df["Revenue"].sum()
+avg_engagement = filtered_df["Engagement Score"].mean()
+retention_rate = (
+    filtered_df[filtered_df["Retention Status"] == "Retained"].shape[0]
+    / filtered_df.shape[0]
+) * 100
+
+# -----------------------------
+# Display KPIs
+# -----------------------------
 col1, col2, col3, col4 = st.columns(4)
 
 col1.metric("Total Clients", total_clients)
 col2.metric("Total Revenue", f"₹{total_revenue:,.0f}")
-col3.metric("Avg Engagement", f"{avg_engagement:.2f}")
-col4.metric("Retention Rate", f"{retention_rate:.2f}%")
+col3.metric("Avg Engagement Score", f"{avg_engagement:.2f}")
+col4.metric("Retention Rate", f"{retention_rate:.1f}%")
 
-st.markdown("---")
-
-# ----------------------------
+# -----------------------------
 # Charts
-# ----------------------------
+# -----------------------------
 
 # Revenue by Industry
-rev_industry = df.groupby("Industry")["Revenue"].sum().reset_index()
-
 fig1 = px.bar(
-    rev_industry,
+    filtered_df.groupby("Industry")["Revenue"].sum().reset_index(),
     x="Industry",
     y="Revenue",
     title="Revenue by Industry"
 )
 
-st.plotly_chart(fig1, use_container_width=True)
-
-# Retention Count
-retention = df["Retention Status"].value_counts().reset_index()
-retention.columns = ["Status", "Count"]
-
+# Revenue by Region
 fig2 = px.pie(
-    retention,
-    names="Status",
-    values="Count",
-    title="Retention Distribution"
+    filtered_df,
+    names="Region",
+    values="Revenue",
+    title="Revenue Distribution by Region"
 )
 
-st.plotly_chart(fig2, use_container_width=True)
+# Engagement Score Distribution
+fig3 = px.histogram(
+    filtered_df,
+    x="Engagement Score",
+    nbins=20,
+    title="Engagement Score Distribution"
+)
 
 # Meetings vs Revenue
-fig3 = px.scatter(
-    df,
+fig4 = px.scatter(
+    filtered_df,
     x="Meetings Count",
     y="Revenue",
-    color="Retention Status",
-    size="Engagement Score",
+    color="Industry",
     title="Meetings vs Revenue"
 )
 
-st.plotly_chart(fig3, use_container_width=True)
+# -----------------------------
+# Show Charts
+# -----------------------------
+st.plotly_chart(fig1, use_container_width=True)
+st.plotly_chart(fig2, use_container_width=True)
 
-# ----------------------------
-# Data Preview
-# ----------------------------
-st.subheader("Dataset Preview")
-st.dataframe(df)
+col5, col6 = st.columns(2)
+col5.plotly_chart(fig3, use_container_width=True)
+col6.plotly_chart(fig4, use_container_width=True)
+
+# -----------------------------
+# Data Table
+# -----------------------------
+st.subheader("Filtered Data")
+st.dataframe(filtered_df)
