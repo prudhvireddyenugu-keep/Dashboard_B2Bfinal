@@ -111,7 +111,7 @@ st.markdown("""
 # ── Data Loading ───────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
-    df = pd.read_excel("client_data_csv.xlsx")
+    df = pd.read_excel("client_data.csv.xlsx")
     # Simulate a date column for Revenue Trend (12 months)
     np.random.seed(42)
     months = pd.date_range("2024-01-01", periods=12, freq="ME")
